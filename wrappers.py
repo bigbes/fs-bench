@@ -1,3 +1,7 @@
+import os
+import subprocess
+from subprocess import PIPE
+import shutil
 
 class DD:
     """Basic wrapper for dd"""
@@ -60,8 +64,13 @@ class Sudo:
     def __init__(self):
         pass
 
-    def __init__(self, command,  password = Sudo._pass):
+    def __init__(self, command,  password = ""):
+        if password == "":
+            password = Sudo._pass
         command = command.split()
-        proc = subprocess.Popen(["/usr/bin/sudo","-S"]+command)
+        proc = subprocess.Popen(["/usr/bin/sudo","-S"]+command,  stdin = PIPE,  stdout = PIPE)
         proc.communicate(password)
         proc.wait()
+
+if __name__ == "__main__":
+    print "This is library, stupid!"
