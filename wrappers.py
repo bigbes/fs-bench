@@ -1,7 +1,5 @@
-import os
 import subprocess
 from subprocess import PIPE
-import shutil
 
 class DD:
     """Basic wrapper for dd"""
@@ -37,15 +35,13 @@ class DD:
 
     def run(self):
         try:
-            print "####### {0} {1} {2} {3}".format(self._dd, self._if,
-                    self._of, self. _bs, self._count)
-            proc1 = subprocess.Popen([self._dd, self._if, self._of,
-                    self._bs, self._count])
+            print("####### {0} {1} {2} {3}".format(self._dd, self._if, self._of, self. _bs, self._count))
+            proc1 = subprocess.Popen([self._dd, self._if, self._of, self._bs, self._count])
             return proc1.wait()
         except OSError:
-            print "nonexecutable file - strange."
+            print("nonexecutable file - strange.")
         except ValueError:
-            print "wrong argumentsssss"
+            print("wrong argumentsssss")
 
 class Device:
     """Basic enum for devices"""
@@ -60,9 +56,6 @@ class Device:
 
 class Sudo:
     _pass = "121211\n"
-    
-    def __init__(self):
-        pass
 
     def __init__(self, command,  password = ""):
         if password == "":
@@ -73,4 +66,4 @@ class Sudo:
         proc.wait()
 
 if __name__ == "__main__":
-    print "This is library, stupid!"
+    print ("This is library, stupid!")

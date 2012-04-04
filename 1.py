@@ -23,30 +23,6 @@ class FileDevice:
     _size = 16
     _ftype = FileSystems.ext2
 
-    def __init__(self):
-        self.num = FileDevice._num
-        FileDevice._num += 1
-
-        setName(FileDevice._name + str(self.num))
-        setSize(_size)
-        setFType(FileDevice._ftype)
-
-    def __init__(self, Size = _size, Ftype = _ftype):
-        self.num = FileDevice._num
-        FileDevice._num += 1
-
-        self.setName(FileDevice._name+"_"+str(self.num))
-        self.setSize(Size)
-        self.setFType(Ftype)
-
-
-    def setNum(self):
-        try:
-            self.num
-        except NameError:
-            self.num = _num
-            _num += 1
-
     def setName(self, Name):
         self.name = Name
         self.dir = "dir_"+self.name
@@ -56,6 +32,22 @@ class FileDevice:
 
     def setSize(self, Size):
         self.size = Size
+
+
+    def __init__(self):
+        self.num = FileDevice._num
+        FileDevice._num += 1
+
+        self.setName(FileDevice._name + str(self.num))
+        self.setSize(self._size)
+        self.setFType(FileDevice._ftype)
+
+    def setNum(self):
+        try:
+            self.num
+        except NameError:
+            self.num = self._num
+            self._num += 1
 
     def make(self):
         if self.ftype == FileSystems.ramfs:
@@ -68,18 +60,15 @@ class FileDevice:
     def mount(self):
         if self.ftype == FileSystems.ramfs:
             os.mkdir(self.name)
-            Sudo("mount -t {2} {2} {0} -o size={1}M".format(self.name,
-                self.size, FileSystems.table[self.ftype]))
+            Sudo("mount -t {2} {2} {0} -o size={1}M".format(self.name,self.size, FileSystems.table[self.ftype]))
             return self
         os.mkdir("dir_{0}".format(self.name))
-        Sudo("mount {0} dir_{0} -t {1} -o loop".format(self.name,
-            FileSystems.table[self.ftype]))
+        Sudo("mount {0} dir_{0} -t {1} -o loop".format(self.name,FileSystems.table[self.ftype]))
         return self
 
     def makefiles(self, Qty = _size - 1, Size = 1, Suff = "M"):
         for i in xrange(Qty):
-            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),
-                    str(Size)+Suff, 1).run() == 1:
+            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1).run() == 1:
                 self.qty = i - 2
                 os.remove("dir_{0}/tmp{1}".format(self.name, i-1))
                 return self
