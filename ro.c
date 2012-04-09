@@ -8,7 +8,7 @@ int main(){
     int fd = open("./tempfc", O_RDWR | O_CREAT);
     sleep(5);
     ssize_t ret;
-    char *c = "12345\n";
+    char c[] = "12345\n";
     while ((ret = write(fd, c, sizeof(c))) != -1);
     int sig = fcntl(fd, 11);
     printf("%d %d %d\n", ret, sig, errno);
