@@ -63,7 +63,7 @@ class Sudo:
         if password == "":
             password = Sudo._pass
         command = command.split()
-        proc = subprocess.Popen(["/usr/bin/sudo","-S", "-p",""]+command,  stdin = PIPE, stdout = PIPE)
+        proc = subprocess.Popen(["/usr/bin/sudo","-S", "-p",""] + command, stdin=PIPE, stdout=PIPE)
         proc.communicate(password)
         proc.wait()
 

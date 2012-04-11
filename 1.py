@@ -2,6 +2,8 @@
 import os
 import subprocess
 import shutil
+
+from subprocess import PIPE
 from wrappers import DD,  Device,  Sudo
 
 class FileSystems:
@@ -52,13 +54,13 @@ class FileDevice:
 
     def make(self):
         if self.ftype == FileSystems.ramfs:
-            return self
+            return# self
         DD(Device.zero, self.name, "1M", self.size)
         if subprocess.call(["/sbin/mkfs.{0}".format(
             FileSystems.table[self.ftype]),self.name, "-F", "-q"],):
             print "Error, when mkfs"
             exit(1)
-        return self
+        #return self
 
     def erase(self, rand_flag = 0):
         if self.ftype == FileSystems.ramfs:
@@ -67,7 +69,7 @@ class FileDevice:
             DD(Device.urand, self.name, "1M", self.size())
         else:
             DD(Device.zero, self.name, "1M", self.size())
-        return self
+        #return self
 
     def mount(self):
         if self.__mount:
@@ -88,7 +90,7 @@ class FileDevice:
         else:
             Sudo("mount {0} dir_{0} -t {1} -o loop".format(self.name,FileSystems.table[self.ftype]))
 
-        return self
+        #return self
 
     def remount_RO(self):
         if not self.__mount:
@@ -96,17 +98,22 @@ class FileDevice:
             return
 
         Sudo("mount -o remount,ro /dir_{0}".format(self.name))
-        return self
+        #return self
 
-    def make_files(self, Qty = _size - 1, Size = 1, Suff = "M"):
+    def make_files(self, Qty = -1, Size = 1, Suff = "M"):
+        if Qty == -1:
+            Qty = self.size * 1024 * 1024
+            Qty = Qty / (Size * (1 if Suff == "c" else 1024 if Suff == "k" else 1024*1024))
+            print Qty
         if not self.__mount:
             print "Not mounted"
             return
         for i in xrange(Qty):
-            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1) == 1:
-                os.remove("dir_{0}/tmp{1}".format(self.name, i - 1))
+            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1):
+                #os.remove("dir_{0}/tmp{1}".format(self.name, i - 1))
                 self.__qty = i - 2
-                return self
+                print self.__qty
+                return# self
 
     def delete_last(self):
         if not self.__qty:
@@ -114,17 +121,19 @@ class FileDevice:
 
         os.removde("dir_{0}/tmp{1}".format(self.name, self.__qty))
         self.__qty = self.__qty - 1
-        return self
+        #return self
 
     def copy_exec(self, exe = "a.out"):
-        self.__exe = __exe
+        self.__exe = exe
         shutil.copy2(self.__exe, "dir_{0}".format(self.name))
-        return self
+        #return self
 
     def run(self):
-        proc = subprocess.Popen(["dir_{0}/{1}".format(self.name, self.__exe)])
-        #TODO: we may calculate this in parallel. move from _wait to _result.
-        return proc.wait()
+        os.chdir("dir_{0}".format(self.name))
+        proc = subprocess.Popen(["./{0}".format(self.__exe)], stdout=PIPE, stderr=PIPE)
+        os.chdir("..")
+        #TODO: we may calculate this in parallel. move from _wait to _result.:w
+        return proc.communicate()[0]
 
     #def copy_and_run(self):
     #    shutil.copy2("a.out", "dir_{0}".format(self.name))
@@ -138,10 +147,51 @@ class FileDevice:
         print "Umounted! {0}".format(self.num)
         Sudo("umount dir_{0}".format(self.name))
 
+    def clean(self):
+        os.rmdir("dir_{0}".format(self.name))
+        os.remove("{0}".format(self.name))
+
     def __del__(self):
         pass
 
-if __name__ == "__main__":
-    fd = FileDevice().make().mount().umount()
+
+def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfix="M"):
+    fd = FileDevice()
+    fd.set_ftype(fs_type)
+    fd.set_size(fd_size)
+
+    fd.make()
+    fd.mount()
+
+    fd.copy_exec("write")
+    fd.make_files(Size = cf_size, Suff = cf_postfix)
+    ret = map(lambda x: int(x), fd.run().split())
+
+    print "Testing write(2) if ENOSPC for {0} and cf_size {2}{3}".format(
+            FileSystems.table[fs_type], fd.num, cf_size, cf_postfix)
+    print "First launch "+str(ret)
+
+    _iters = 0
+    if ret[3] == 0:
+        if ret[0] != -1:
+            print ret
+        fd.delete_last()
+        ret = map(lambda x: int(x), fd.run().split())
+        _iters += 1
+    print "Next launch "+str(_iters)+" "+str(ret)
+
+    fd.umount()
+    fd.clean()
+
+def check_ro(fd_size = 16):
     pass
 
+def check_erase(fd_size = 16):
+    pass
+
+if __name__ == "__main__":
+    #table = ((1, "c"), (128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    for elem in table:
+        check_write(cf_size = elem[0], cf_postfix = elem[1], fd_size = 72)
+    pass
