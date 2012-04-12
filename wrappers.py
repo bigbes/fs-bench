@@ -39,7 +39,9 @@ class DD:
         try:
             print "####### {0} {1} {2} {3}".format(self._dd, self._if, self._of, self. _bs, self._count)
             proc1 = subprocess.Popen([self._dd, self._if, self._of, self._bs, self._count])
-            return proc1.wait()
+            int_ =  proc1.wait()
+            print int_
+            return int_
         except OSError:
             print "nonexecutable file - strange."
         except ValueError:
