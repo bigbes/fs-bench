@@ -115,7 +115,7 @@ class FileDevice:
             return
 
         for i in xrange(Qty):
-            if not DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1):
+            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1) == 1:
                 self.__qty = i - 2
                 print self.__qty
                 time.sleep(2)
