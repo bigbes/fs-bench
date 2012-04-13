@@ -1,5 +1,19 @@
+import os
 import subprocess
+import shlex
+
 from subprocess import PIPE
+
+nil = open(os.devnull, 'w')
+
+class WrapperError(Exception):
+    def __init__(self, value, wrapper):
+        self.value = value
+        self.wrapper = wrapper
+
+    def __str__(self):
+        return self.wrapper + ": " + self.value
+
 
 class DD:
     """Basic wrapper for dd"""
@@ -33,19 +47,17 @@ class DD:
         else:
             self._count = "count="+str(__count)
 
-        self.run()
-
     def run(self):
         try:
-            print "####### {0} {1} {2} {3}".format(self._dd, self._if, self._of, self. _bs, self._count)
-            proc1 = subprocess.Popen([self._dd, self._if, self._of, self._bs, self._count])
-            int_ =  proc1.wait()
-            print int_
-            return int_
+            exec_prog = self._dd +" "+ self._if +" "+ self._of
+            exec_prog = exec_prog +" "+self._bs +" "+self._count
+
+            #proc = subprocess.Popen(shlex.split(exec_prog))
+            return subprocess.Popen(shlex.split(exec_prog),stdout=nil.fileno(), stderr=nil.fileno()).wait()
         except OSError:
-            print "nonexecutable file - strange."
+            print "dd is Non-Executable File"
         except ValueError:
-            print "wrong argumentsssss"
+            print "Wrong Arguments"
 
 class Device:
     """Basic enum for devices"""
@@ -55,8 +67,8 @@ class Device:
     urand = 2
     zero  = 3
     null  = 4
-    table = {1:"/dev/random", 2:"/dev/urandom", \
-            3:"/dev/zero", 4:"dev/null"}
+    table = {1:"/dev/random", 2:"/dev/urandom",
+            3:"/dev/zero", 4:"/dev/null"}
 
 class Sudo:
     _pass = "121211\n"
@@ -64,8 +76,21 @@ class Sudo:
     def __init__(self, command,  password = ""):
         if password == "":
             password = Sudo._pass
-        command = command.split()
-        proc = subprocess.Popen(["/usr/bin/sudo","-S", "-p",""] + command, stdin=PIPE, stdout=PIPE)
+
+        exec_prog = "/usr/bin/sudo -S"
+
+        if type(command) is type(""):
+            exec_prog = exec_prog +" "+ command
+            exec_prog = shlex.split(exec_prog)
+        elif type(command) is type(list()):
+            exec_prog = shlex.split(exec_prog) + command
+        else:
+            raise WrapperError("""Wrong 'Command' Argument""","Sudo")
+        print exec_prog
+        #proc = subprocess.Popen(["/usr/bin/sudo","-S", "-p",""]+ command, stdin=PIPE, stdout=PIPE)
+
+        proc = subprocess.Popen(exec_prog,
+            stdin=PIPE, stdout=nil.fileno(), stderr=nil.fileno())
         proc.communicate(password)
         proc.wait()
 

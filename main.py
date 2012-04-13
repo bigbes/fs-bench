@@ -3,6 +3,7 @@ import os
 import subprocess
 import shutil
 import time
+import shlex
 
 from subprocess import PIPE
 from wrappers import DD,  Device,  Sudo
@@ -19,10 +20,12 @@ class FileSystems:
     table = {1:"ext2", 2:"ext3", 3:"ext4",
             4:"btrfs", 5:"xfs", 6:"jfs", 7:"tmpfs"}
 
+fs_table = FileSystems.table
+
 class FileDevice:
     _name = "td"
     _num = 0
-    #in MB
+    #in mb
     _size = 16
     _ftype = FileSystems.ext2
 
@@ -55,41 +58,42 @@ class FileDevice:
 
     def make(self):
         if self.ftype == FileSystems.ramfs:
-            return# self
-        DD(Device.zero, self.name, "1M", self.size)
-        if subprocess.call(["/sbin/mkfs.{0}".format(
-            FileSystems.table[self.ftype]),self.name, "-F", "-q", "-N", str(90000)],):
+            return
+        DD(Device.zero, self.name, "1M", self.size).run()
+        exec_prog = shlex.split("/sbin/mkfs."+fs_table[self.ftype]+
+            " -F -q -N 90000 "+ self.name)
+        if subprocess.call(exec_prog):
             print "Error, when mkfs"
             exit(1)
-        #return self
 
     def erase(self, rand_flag = 0):
         if self.ftype == FileSystems.ramfs:
             return
         if rand_flag:
-            DD(Device.urand, self.name, "1M", self.size())
+            DD(Device.urand, self.name, "1M", self.size).run()
         else:
-            DD(Device.zero, self.name, "1M", self.size())
-        #return self
+            DD(Device.zero, self.name, "1M", self.size).run()
 
     def mount(self):
         if self.__mount:
             print "Already mounted"
             return
 
-        print "Mounted! {0}".format(self.num)
+        print "Mounted! Number " + str(self.num)
         self.__mount = 1
-        #if not there
-        #make dir
         try:
             os.mkdir("dir_{0}".format(self.name))
         except OSError:
             pass
 
         if self.ftype == FileSystems.ramfs:
-            Sudo("mount -t {2} {2} {0} -o size={1}M".format(self.name,self.size, FileSystems.table[self.ftype]))
+            #Sudo("mount -t {2} {2} {0} -o size={1}M".format(self.name,self.size, fs_table[self.ftype]))
+            exec_prog = "mount -t"+2*(" "+fs_table[self.ftype])+" -o size="+self.size+"M"
+            Sudo(exec_prog)
         else:
-            Sudo("mount {0} dir_{0} -t {1} -o loop".format(self.name,FileSystems.table[self.ftype]))
+            #Sudo("mount {0} dir_{0} -t {1} -o loop".format(self.name,fs_table[self.ftype]))
+            exec_prog = "mount "+self.name+" dir_"+self.name+" -t "+fs_table[self.ftype]+" -o loop"
+            Sudo(exec_prog)
 
         #return self
 
@@ -101,35 +105,30 @@ class FileDevice:
         Sudo("mount -o remount,ro /dir_{0}".format(self.name))
         #return self
 
-    def make_files(self, Qty = -1, Size = 1, Suff = "M"):
-        if Qty == -1:
-            Qty = self.size * 1024 * 1024
-            Qty = Qty / Size
-            if Suff == "K":
-                Qty = Qty / 1024
-            if Suff == "M":
-                Qty = Qty / (1024*1024)
-
+    def make_files(self, Size = 1, Suff = "M"):
         if not self.__mount:
             print "Not mounted"
             return
 
-        for i in xrange(Qty):
-            if DD(Device.urand, "dir_{0}/tmp{1}".format(self.name, i),str(Size)+Suff, 1) == 1:
-                self.__qty = i - 2
-                print self.__qty
-                time.sleep(2)
-                return
+        i = 0
+        place = "dir_"+self.name+"/tmp"
+        while not DD(Device.urand, place+str(i), str(Size)+Suff, 1).run():
+            i += 1
+        os.remove(place+str(i))
+        self.__qty = i - 1
+        print "Quantity of Garbage Files: "+str(self.__qty)
+        return
 
-    def delete_last(self):
-        print self.__qty
-        if not self.__qty:
-            return
+    def delete_last(self, ret = ""):
+        if self.__qty < 0:
+            print "No more files"
+            return 1
 
-        print "dir_{0}/tmp{1}".format(self.name, self.__qty)
+        print "Delete file dir_"+self.name+"/tmp"+str(self.__qty)+str(ret)
+        #print "dir_{0}/tmp{1}".format(self.name, self.__qty)
         os.remove("dir_{0}/tmp{1}".format(self.name, self.__qty))
         self.__qty = self.__qty - 1
-        #return self
+        return 0
 
     def copy_exec(self, exe = "a.out"):
         self.__exe = exe
@@ -164,6 +163,7 @@ class FileDevice:
 
 
 def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfix="M"):
+    print "\n####################Checking on FS Size {0}, F Size {1}{2}".format(fd_size, cf_size, cf_postfix)
     fd = FileDevice()
     fd.set_ftype(fs_type)
     fd.set_size(fd_size)
@@ -173,22 +173,25 @@ def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfi
 
     fd.copy_exec("write")
     fd.make_files(Size = cf_size, Suff = cf_postfix)
-    time.sleep(3)
-    #ret = map(lambda x: int(x), fd.run().split())
+    #subprocess.call("df -i".split())
+    #subprocess.call("df -h".split())
+    #time.sleep(10)
+    ret = map(lambda x: int(x), fd.run().split())
 
-    #print "Testing write(2) if ENOSPC for {0} and cf_size {2}{3}".format(
-    #        FileSystems.table[fs_type], fd.num, cf_size, cf_postfix)
-    #print "First launch "+str(ret)
+    print "Testing write(2) if ENOSPC for {0} and cf_size {2}{3}".format(
+            fs_table[fs_type], fd.num, cf_size, cf_postfix)
+    print "First launch " + str(ret)
 
-    #ret = map(lambda x: int(x), fd.run().split())
+    ret = map(lambda x: int(x), fd.run().split())
 
-    #_iters = 0
-    #while ret[3] == 0:
-    #    print ret
-    #    fd.delete_last()
-    #    ret = map(lambda x: int(x), fd.run().split())
-    #    _iters += 1
-    #print "Next launch "+str(_iters)+" "+str(ret)
+    _iters = 0
+    while ret[3] == 0:
+        #print ret
+        if fd.delete_last(ret):
+            break
+        ret = map(lambda x: int(x), fd.run().split())
+        _iters += 1
+    print "Next launch "+str(_iters)+" "+str(ret)
 
     fd.umount()
     fd.clean()
@@ -200,8 +203,8 @@ def check_erase(fd_size = 16):
     pass
 
 if __name__ == "__main__":
-    #table = ((1, "c"), (128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
-    table = ((4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    #table = ((1, "M"), (16, "M"), (32, "M"))
     for elem in table:
         check_write(cf_size = elem[0], cf_postfix = elem[1], fd_size = 72)
     pass
