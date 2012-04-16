@@ -61,7 +61,7 @@ class FileDevice:
             return
         DD(Device.zero, self.name, "1M", self.size).run()
         exec_prog = shlex.split("/sbin/mkfs."+fs_table[self.ftype]+
-            " -F -q -N 90000 "+ self.name)
+            " -F -q "+ self.name)
         if subprocess.call(exec_prog):
             print "Error, when mkfs"
             exit(1)
@@ -114,7 +114,12 @@ class FileDevice:
         place = "dir_"+self.name+"/tmp"
         while not DD(Device.urand, place+str(i), str(Size)+Suff, 1).run():
             i += 1
-        os.remove(place+str(i))
+
+        try:
+            os.remove(place+str(i))
+        except OSError:
+            pass
+
         self.__qty = i - 1
         print "Quantity of Garbage Files: "+str(self.__qty)
         return
@@ -126,7 +131,10 @@ class FileDevice:
 
         print "Delete file dir_"+self.name+"/tmp"+str(self.__qty)+str(ret)
         #print "dir_{0}/tmp{1}".format(self.name, self.__qty)
-        os.remove("dir_{0}/tmp{1}".format(self.name, self.__qty))
+        try:
+            os.remove("dir_{0}/tmp{1}".format(self.name, self.__qty))
+        except OSError:
+            pass
         self.__qty = self.__qty - 1
         return 0
 

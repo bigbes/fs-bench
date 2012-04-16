@@ -6,10 +6,12 @@
 
 int main(){
     int fd = open("./tempfc", O_RDWR | O_CREAT | O_APPEND);
-    if ( fchmod(fd, S_IRWXU | S_IRWXG | S_IRWXO))
-        printf("Error, while chmod");
+    int tmp = 0;
+    //if ( tmp = fchmod(fd, S_IRWXU | S_IRWXG | S_IRWXO))
+    //    printf("Error, while chmod: %d %d ", tmp, errno);
+    //    return 1;
 
-   	ssize_t ret;
+    ssize_t ret;
     unsigned int i=0;
 
     char c[] = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. \n\
@@ -23,5 +25,5 @@ int main(){
     printf("%d %d %d %u", ret, sig, errno, i);
 
     close(fd);
-    return errno;
+    return 0;
 }

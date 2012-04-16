@@ -6,6 +6,8 @@ from subprocess import PIPE
 
 nil = open(os.devnull, 'w')
 
+DEBUG = False
+
 class WrapperError(Exception):
     def __init__(self, value, wrapper):
         self.value = value
@@ -53,7 +55,11 @@ class DD:
             exec_prog = exec_prog +" "+self._bs +" "+self._count
 
             #proc = subprocess.Popen(shlex.split(exec_prog))
-            return subprocess.Popen(shlex.split(exec_prog),stdout=nil.fileno(), stderr=nil.fileno()).wait()
+            if not DEBUG:
+                return subprocess.Popen(shlex.split(exec_prog),stdout=nil.fileno(), stderr=nil.fileno()).wait()
+            else:
+                return subprocess.Popen(shlex.split(exec_prog)).wait()
+
         except OSError:
             print "dd is Non-Executable File"
         except ValueError:
