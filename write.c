@@ -21,12 +21,10 @@ int main(){
 
     while ((ret = write(fd, c, sizeof(c))) == sizeof(c)) i++;
 
-    //int sig = fcntl(fd, 11);
     printf("%d %d %u - ", ret, errno, i);
 
     if (ret != -1){
         ret = write(fd, c, sizeof(c));
-        int sig = fcntl(fd, 11);
         printf("%d %d %u", ret, errno, i);
     }
     close(fd);
