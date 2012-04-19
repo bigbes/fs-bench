@@ -56,9 +56,11 @@ class DD:
 
             #proc = subprocess.Popen(shlex.split(exec_prog))
             if not DEBUG:
-                return subprocess.Popen(shlex.split(exec_prog),stdout=nil.fileno(), stderr=nil.fileno()).wait()
+                proc = subprocess.Popen(shlex.split(exec_prog), stdout=nil.fileno(), stderr=nil.fileno())
             else:
-                return subprocess.Popen(shlex.split(exec_prog)).wait()
+                proc = subprocess.Popen(shlex.split(exec_prog))
+
+            return proc.wait()
 
         except OSError:
             print "dd is Non-Executable File"
@@ -92,7 +94,8 @@ class Sudo:
             exec_prog = shlex.split(exec_prog) + command
         else:
             raise WrapperError("""Wrong 'Command' Argument""","Sudo")
-        print exec_prog
+        if DEBUG:
+            print exec_prog
         #proc = subprocess.Popen(["/usr/bin/sudo","-S", "-p",""]+ command, stdin=PIPE, stdout=PIPE)
 
         proc = subprocess.Popen(exec_prog,
