@@ -5,16 +5,10 @@
 #include <sys/stat.h>
 
 int main(){
-    int fd = open("./tempfc", O_RDWR | O_CREAT | O_APPEND);
+    int fd = open("./tempfc", O_RDWR | O_CREAT | O_APPEND, S_IRWXU | S_IRWXG | S_IRWXO);
     if(fd < 0){
         printf("-2 0 %d 0", errno);
         return 2;
-    }
-
-    int tmp = 0;
-    if ( tmp = fchmod(fd, S_IRWXU | S_IRWXG | S_IRWXO)){
-        printf("Error, while chmod: %d %d ", tmp, errno);
-        return 1;
     }
 
     ssize_t ret;
@@ -27,13 +21,13 @@ int main(){
 
     while ((ret = write(fd, c, sizeof(c))) == sizeof(c)) i++;
 
-    int sig = fcntl(fd, 11);
-    printf("%d %d %d %u - ", ret, sig, errno, i);
+    //int sig = fcntl(fd, 11);
+    printf("%d %d %u - ", ret, errno, i);
 
     if (ret != -1){
         ret = write(fd, c, sizeof(c));
         int sig = fcntl(fd, 11);
-        printf("%d %d %d %u", ret, sig, errno, i);
+        printf("%d %d %u", ret, errno, i);
     }
     close(fd);
     return 0;
