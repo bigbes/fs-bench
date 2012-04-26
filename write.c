@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+
+
 int main(){
     int fd = open("./tempfc", O_RDWR | O_CREAT | O_APPEND, S_IRWXU | S_IRWXG | S_IRWXO);
     if(fd < 0){
-        printf("-2 0 %d 0", errno);
+        printf("-2 %d 0", errno);
         return 2;
     }
 
@@ -19,14 +21,14 @@ int main(){
     Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\
     Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n";
 
-    printf("%u\n", sizeof(c));
+    //printf("%u\n", sizeof(c));
     while ((ret = write(fd, c, sizeof(c))) == sizeof(c)) i++;
 
-    printf("%d %d %u - ", ret, errno, i);
+    printf("%d %d %u ", ret, errno, i);
 
     if (ret != -1){
         ret = write(fd, c, sizeof(c));
-        printf("%d %d %u", ret, errno, i);
+        printf("%d %d", ret, errno);
     }
     close(fd);
     return 0;

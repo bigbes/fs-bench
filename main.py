@@ -4,9 +4,11 @@ import subprocess
 import shutil
 import time
 import shlex
+import logging
 
 from subprocess import PIPE
 from wrappers import DD,  Device,  Sudo
+from errno import errorcode
 
 DEBUG = False
 
@@ -23,6 +25,8 @@ class FileSystems:
             4:"btrfs", 5:"xfs", 6:"jfs", 7:"tmpfs"}
 
 fs_table = FileSystems.table
+logging.basicConfig(filename="main.log", level=logging.DEBUG, format="%(levelname)s: %(message)s")
+
 
 class FileDevice:
     _name = "td"
@@ -40,7 +44,6 @@ class FileDevice:
 
     def set_size(self, Size):
         self.size = Size
-
 
     def __init__(self):
         self.set_num()
@@ -111,8 +114,6 @@ class FileDevice:
         exec_prog = "chmod a+rwx -R dir_"+self.name
         Sudo(exec_prog)
 
-        #return self
-
     def remount_RO(self):
         if not self.__mount:
             print "Not mounted"
@@ -173,11 +174,6 @@ class FileDevice:
         os.chdir("..")
         return proc
 
-    #def copy_and_run(self):
-    #    shutil.copy2("a.out", "dir_{0}".format(self.name))
-    #    proc = subprocess.Popen(["dir_{0}/a.out".format(self.name)])
-    #    return proc.wait()
-
     def umount(self):
         if not self.__mount:
             print "Not Mounted!"
@@ -208,8 +204,8 @@ def cool(x):
 
 
 def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfix="M"):
-    print "\n##########WRITE#####"
-    print "Checking on FS - {3}. Size {0}, F Size {1}{2}".format(fd_size, cf_size, cf_postfix, fs_table[fs_type])
+    logging.info("WRITE TEST")
+    logging.info("Checking on FS - {3}. Size {0}, F Size {1}{2}".format(fd_size, cf_size, cf_postfix, fs_table[fs_type]))
 
     fd = FileDevice()
     fd.set_ftype(fs_type)
@@ -220,31 +216,29 @@ def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfi
 
     fd.copy_exec("write")
     fd.make_files(Size = cf_size, Suff = cf_postfix)
-    #subprocess.call("df -i".split())
-    #subprocess.call("df -h".split())
-    #time.sleep(10)
 
-    #ret = map(lambda x: int(x), fd.run().split())
     ret = map(cool, fd.run().split())
 
-    #print "Testing write(2) if ENOSPC for {0} and cf_size {2}{3}".format(
-    #        fs_table[fs_type], fd.num, cf_size, cf_postfix)
-    print "First launch " + str(ret)
+    logging.info("First Launch:"+str(ret[0]))
+    if ret[1] != 0:
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info("Cycles of Write: "+str(ret[2]))
 
-    #ret = map(lambda x: int(x), fd.run().split())
     ret = map(cool, fd.run().split())
 
     _iters = 0
     while ret[2] == 0:
-        #print ret
         if fd.delete_last(ret):
             break
-
-        #ret = map(lambda x: if x!="-": int(x), fd.run().split())
         ret = map(cool, fd.run().split())
         _iters += 1
-    print "Next launch "+str(_iters)+" "+str(ret)
 
+    logging.info(" ")
+    logging.info("Next Launch: "+str(ret[0]))
+    logging.info("Number of deleted files: "+str(_iters))
+    if ret[1] != 0 :
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info(" ")
     fd.umount()
     fd.clean()
 
@@ -307,12 +301,8 @@ def check_erase(fs_type = FileSystems.ext2, fd_size = 16):
 
 if __name__ == "__main__":
     #table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
-    table = ((1, "M"), (16, "M"), (32, "M"))
-    #for elem in table:
-    #    check_write(cf_size = elem[0], cf_postfix = elem[1], fd_size = 72)
-    #check_
+    table = ((128, "c"), (4, "K"))
     for f in xrange(4, 7):
-    #for f in xrange(1, 4):
         for t in table:
             check_write(f, 72, t[0], t[1])
     pass
