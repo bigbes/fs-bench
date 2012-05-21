@@ -7,10 +7,10 @@
 int main(){
     int fd = open("./tempfc", O_RDWR | O_CREAT | O_APPEND, S_IRWXU | S_IRWXG | S_IRWXO);
     if(fd < 0){
-        printf("-2 0 %d 0", errno);
+        printf("-2 %d 0", errno);
         return 2;
     }
-    sleep(3);
+    sleep(4);
 
     ssize_t ret;
     unsigned int i=0;

@@ -24,6 +24,8 @@ class FileSystems:
     table = {1:"ext2", 2:"ext3", 3:"ext4",
             4:"btrfs", 5:"xfs", 6:"jfs", 7:"tmpfs"}
 
+fs = FileSystems
+
 fs_table = FileSystems.table
 logging.basicConfig(filename="main.log", level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
@@ -65,7 +67,7 @@ class FileDevice:
         if self.ftype == FileSystems.ramfs:
             return
         if self.ftype >= FileSystems.ext2 and self.ftype <= FileSystems.ext4:
-            exec_prog = " -F -q -N 90000 "
+            exec_prog = " -F -q "
         elif self.ftype == FileSystems.xfs:
             exec_prog = " -q -f "
         elif self.ftype == FileSystems.jfs:
@@ -105,7 +107,8 @@ class FileDevice:
             pass
 
         if self.ftype == FileSystems.ramfs:
-            exec_prog = "mount -t"+2*(" "+fs_table[self.ftype])+" -o size="+str(self.size)+"M"
+            exec_prog = "mount -t"+2*(" "+fs_table[self.ftype])+" -o size="+str(self.size)+"M dir_"+self.name
+            logging.debug(exec_prog)
             Sudo(exec_prog)
         else:
             exec_prog = "mount "+self.name+" dir_"+self.name+" -t "+fs_table[self.ftype]+" -o loop"
@@ -172,6 +175,7 @@ class FileDevice:
         os.chdir("dir_{0}".format(self.name))
         proc = subprocess.Popen(["./{0}".format(self.__exe)], stdout=PIPE, stderr=PIPE)
         os.chdir("..")
+        time.sleep(2);
         return proc
 
     def umount(self):
@@ -220,33 +224,35 @@ def check_write(fs_type = FileSystems.ext2, fd_size = 16, cf_size = 1, cf_postfi
     ret = map(cool, fd.run().split())
 
     logging.info("First Launch:"+str(ret[0]))
-    if ret[1] != 0:
+    if ret[1] != 0 and ret[1] != -1:
         logging.info("Errno: "+errorcode[ret[1]])
     logging.info("Cycles of Write: "+str(ret[2]))
 
     ret = map(cool, fd.run().split())
 
     _iters = 0
-    while ret[2] == 0:
+    while ret[2] == 0 and ret[0] < 1:
         if fd.delete_last(ret):
             break
-        ret = map(cool, fd.run().split())
         _iters += 1
+        ret = map(cool, fd.run().split())
 
     logging.info(" ")
     logging.info("Next Launch: "+str(ret[0]))
+    logging.info("Cycles of write: " +str(ret[2]))
     logging.info("Number of deleted files: "+str(_iters))
-    if ret[1] != 0 :
+    if (ret[1] != 0 and ret[1] != -1):
         logging.info("Errno: "+errorcode[ret[1]])
     logging.info(" ")
+
     fd.umount()
     fd.clean()
 
-
-
 def check_ro_before(fs_type = FileSystems.ext2, fd_size = 32):
-    print "\n##########RO#BEFORE##"
-    print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    #print "\n##########RO#BEFORE##"
+    #print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    logging.info("RO_BEFORE TEST")
+    logging.info("Checking on FS - {1}. Size {0}".format(fd_size, fs_table[fs_type]))
 
     fd = FileDevice()
     fd.set_ftype(fs_type)
@@ -256,16 +262,24 @@ def check_ro_before(fs_type = FileSystems.ext2, fd_size = 32):
     fd.mount()
     fd.copy_exec("ro_before")
     fd.remount_RO()
-    ret = fd.run()
-    print ret
+
+    ret = map(cool, fd.run().split())
+
+    logging.info("Launch: "+str(ret[0]))
+    logging.debug(str(ret))
+    if (ret[1] != 0):
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info(" ")
 
     fd.umount()
     fd.clean()
 
 
 def check_ro_after(fs_type = FileSystems.ext2, fd_size = 32):
-    print "\n##########RO#AFTER###"
-    print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    #print "\n##########RO#AFTER###"
+    #print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    logging.info("RO AFTER TEST")
+    logging.info("Checking on FS {1}. Size {0}.".format(fd_size, fs_table[fs_type]))
 
     fd = FileDevice()
     fd.set_ftype(fs_type)
@@ -273,17 +287,28 @@ def check_ro_after(fs_type = FileSystems.ext2, fd_size = 32):
 
     fd.make()
     fd.mount()
+
     fd.copy_exec("ro_after")
     ret = fd.run_inb()
     fd.remount_RO()
-    print ret.communicate()[0]
+
+    ret = ret.communicate()[0]
+    ret = map(cool, ret.split())
+
+    logging.info("Launch: "+str(ret[0]))
+    logging.debug(str(ret))
+    if (ret[1] != 0):
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info(" ")
 
     fd.umount()
     fd.clean()
 
-def check_erase(fs_type = FileSystems.ext2, fd_size = 16):
-    print "\n####ERASE#SUPERBLOCK##"
-    print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+def check_erase_before(fs_type = FileSystems.ext2, fd_size = 16):
+    #print "\n####ERASE#SUPERBLOCK##"
+    #print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    logging.info("ERASE SUPERBLOCK TEST")
+    logging.info("Checking on FS {1}. Size {0}.".format(fd_size, fs_table[fs_type]))
 
     fd = FileDevice()
     fd.set_ftype(fs_type)
@@ -291,18 +316,70 @@ def check_erase(fs_type = FileSystems.ext2, fd_size = 16):
 
     fd.make()
     fd.mount()
+
     fd.copy_exec("erase")
     ret = fd.run_inb()
     fd.erase()
-    print ret.communicate()[0]
+    #print ret.communicate()[0]
+
+    ret = ret.communicate()[0]
+    ret = map(cool, ret.split())
+
+    logging.info("Launch: "+str(ret[0]))
+    logging.debug(str(ret))
+    if (ret[1] != 0):
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info(" ")
+
+    fd.umount()
+    fd.clean()
+
+
+def check_erase_after(fs_type = FileSystems.ext2, fd_size = 16):
+    #print "\n####ERASE#SUPERBLOCK##"
+    #print "Checking on FS {1} Size {0}".format(fd_size, fs_table[fs_type])
+    logging.info("ERASE SUPERBLOCK TEST")
+    logging.info("Checking on FS {1}. Size {0}.".format(fd_size, fs_table[fs_type]))
+
+    fd = FileDevice()
+    fd.set_ftype(fs_type)
+    fd.set_size(fd_size)
+
+    fd.make()
+    fd.mount()
+
+    fd.copy_exec("erase")
+    #ret = fd.run_inb()
+    #fd.erase()
+    #print ret.communicate()[0]
+
+    #ret = ret.communicate()[0]
+    #ret = map(cool, fd.run().split())
+    fd.erase()
+    ret = map(cool, fd.run().split())
+
+    logging.info("Launch: "+str(ret[0]))
+    logging.debug(str(ret))
+    if (ret[1] != 0):
+        logging.info("Errno: "+errorcode[ret[1]])
+    logging.info(" ")
 
     fd.umount()
     fd.clean()
 
 if __name__ == "__main__":
-    #table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
-    table = ((128, "c"), (4, "K"))
-    for f in xrange(4, 7):
-        for t in table:
-            check_write(f, 72, t[0], t[1])
-    pass
+    table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    fs_tab = (FileSystems.ext2, FileSystems.ext3, FileSystems.ext4)
+    #table = ((128, "c"), (4, "K"))
+    #for f in xrange(4, 7):
+    #    for t in table:
+    #        check_write(f, 72, t[0], t[1])
+    #pass
+
+    #for i in table:
+    #    for j in fs_tab:
+    #        check_write(j, 72, i[0], i[1])
+
+    table = ((128, "c"), (4, "K"), (1, "M"), (16, "M"), (32, "M"))
+    for i in xrange(1,7):
+        check_ro_after(i)
